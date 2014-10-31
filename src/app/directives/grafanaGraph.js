@@ -3,46 +3,61 @@ define([
   'jquery',
   'kbn',
   'moment',
-  'underscore'
+  'lodash',
+  './grafanaGraph.tooltip'
 ],
-function (angular, $, kbn, moment, _) {
+function (angular, $, kbn, moment, _, GraphTooltip) {
   'use strict';
 
-  var module = angular.module('kibana.directives');
+  var module = angular.module('grafana.directives');
 
-  module.directive('grafanaGraph', function($rootScope, dashboard) {
+  module.directive('grafanaGraph', function($rootScope, timeSrv) {
     return {
       restrict: 'A',
       template: '<div> </div>',
       link: function(scope, elem) {
-        var data, plot, annotations;
-        var hiddenData = {};
+        var dashboard = scope.dashboard;
+        var data, annotations;
+        var legendSideLastValue = null;
+        scope.crosshairEmiter = false;
 
-        scope.$on('refresh',function() {
-          if (scope.otherPanelInFullscreenMode()) { return; }
+        scope.onAppEvent('setCrosshair', function(event, info) {
+          // do not need to to this if event is from this panel
+          if (info.scope === scope) {
+            return;
+          }
+
+          if(dashboard.sharedCrosshair) {
+            var plot = elem.data().plot;
+            if (plot) {
+              plot.setCrosshair({ x: info.pos.x, y: info.pos.y });
+            }
+          }
+        });
+
+        scope.onAppEvent('clearCrosshair', function() {
+          var plot = elem.data().plot;
+          if (plot) {
+            plot.clearCrosshair();
+          }
+        });
+
+        scope.$on('refresh', function() {
           scope.get_data();
         });
 
-        scope.$on('toggleLegend', function(e, series) {
-          _.each(series, function(serie) {
-            if (hiddenData[serie.alias]) {
-              data.push(hiddenData[serie.alias]);
-              delete hiddenData[serie.alias];
-            }
-          });
-
+        scope.$on('toggleLegend', function() {
           render_panel();
         });
 
         // Receive render events
         scope.$on('render',function(event, renderData) {
           data = renderData || data;
-          annotations = data.annotations;
-          render_panel();
-        });
-
-        // Re-render if the window is resized
-        angular.element(window).bind('resize', function() {
+          if (!data) {
+            scope.get_data();
+            return;
+          }
+          annotations = data.annotations || annotations;
           render_panel();
         });
 
@@ -53,9 +68,9 @@ function (angular, $, kbn, moment, _) {
               height = parseInt(height.replace('px', ''), 10);
             }
 
-            height = height - 32; // subtract panel title bar
+            height -= scope.panel.title ? 24 : 9; // subtract panel title bar
 
-            if (scope.panel.legend.show) {
+            if (scope.panel.legend.show && !scope.panel.legend.rightSide) {
               height = height - 21; // subtract one line legend
             }
 
@@ -82,6 +97,22 @@ function (angular, $, kbn, moment, _) {
             render_panel_as_graphite_png(data);
             return true;
           }
+
+          if (elem.width() === 0) {
+            return;
+          }
+        }
+
+        function updateLegendValues(plot) {
+          var yaxis = plot.getYAxes();
+
+          for (var i = 0; i < data.length; i++) {
+            var series = data[i];
+            var axis = yaxis[series.yaxis - 1];
+            var formater = kbn.valueFormats[scope.panel.y_formats[series.yaxis - 1]];
+            series.updateLegendValues(formater, axis.tickDecimals, axis.scaledDecimals);
+            if(!scope.$$phase) { scope.$digest(); }
+          }
         }
 
         // Function for rendering panel
@@ -91,21 +122,11 @@ function (angular, $, kbn, moment, _) {
           }
 
           var panel = scope.panel;
-
-          _.each(_.keys(scope.hiddenSeries), function(seriesAlias) {
-            var dataSeries = _.find(data, function(series) {
-              return series.info.alias === seriesAlias;
-            });
-            if (dataSeries) {
-              hiddenData[dataSeries.info.alias] = dataSeries;
-              data = _.without(data, dataSeries);
-            }
-          });
-
           var stack = panel.stack ? true : null;
 
           // Populate element
           var options = {
+            hooks: { draw: [updateLegendValues] },
             legend: { show: false },
             series: {
               stackpercent: panel.stack ? panel.percentage : false,
@@ -113,7 +134,7 @@ function (angular, $, kbn, moment, _) {
               lines:  {
                 show: panel.lines,
                 zero: false,
-                fill: panel.fill === 0 ? 0.001 : panel.fill/10,
+                fill: translateFillOption(panel.fill),
                 lineWidth: panel.linewidth,
                 steps: panel.steppedLine
               },
@@ -128,13 +149,15 @@ function (angular, $, kbn, moment, _) {
                 show: panel.points,
                 fill: 1,
                 fillColor: false,
-                radius: panel.pointradius
+                radius: panel.points ? panel.pointradius : 2
+                // little points when highlight points
               },
               shadowSize: 1
             },
             yaxes: [],
             xaxis: {},
             grid: {
+              minBorderMargin: 0,
               markings: [],
               backgroundColor: null,
               borderWidth: 0,
@@ -144,16 +167,26 @@ function (angular, $, kbn, moment, _) {
             selection: {
               mode: "x",
               color: '#666'
+            },
+            crosshair: {
+              mode: panel.tooltip.shared || dashboard.sharedCrosshair ? "x" : null
             }
           };
 
           for (var i = 0; i < data.length; i++) {
-            var _d = data[i].getFlotPairs(panel.nullPointMode, panel.y_formats);
-            data[i].data = _d;
+            var series = data[i];
+            series.applySeriesOverrides(panel.seriesOverrides);
+            series.data = series.getFlotPairs(panel.nullPointMode, panel.y_formats);
+
+            // if hidden remove points and disable stack
+            if (scope.hiddenSeries[series.info.alias]) {
+              series.data = [];
+              series.stack = false;
+            }
           }
 
-          if (panel.bars && data.length && data[0].info.timeStep) {
-            options.series.bars.barWidth = data[0].info.timeStep / 1.5;
+          if (data.length && data[0].stats.timeStep) {
+            options.series.bars.barWidth = data[0].stats.timeStep / 1.5;
           }
 
           addTimeAxis(options);
@@ -161,9 +194,41 @@ function (angular, $, kbn, moment, _) {
           addAnnotations(options);
           configureAxisOptions(data, options);
 
-          plot = $.plot(elem, data, options);
+          var sortedSeries = _.sortBy(data, function(series) { return series.zindex; });
 
-          addAxisLabels();
+          function callPlot() {
+            try {
+              $.plot(elem, sortedSeries, options);
+            } catch (e) {
+              console.log('flotcharts error', e);
+            }
+
+            addAxisLabels();
+          }
+
+          if (shouldDelayDraw(panel)) {
+            // temp fix for legends on the side, need to render twice to get dimensions right
+            callPlot();
+            setTimeout(callPlot, 50);
+            legendSideLastValue = panel.legend.rightSide;
+          }
+          else {
+            callPlot();
+          }
+        }
+
+        function translateFillOption(fill) {
+          return fill === 0 ? 0.001 : fill/10;
+        }
+
+        function shouldDelayDraw(panel) {
+          if (panel.legend.rightSide) {
+            return true;
+          }
+          if (legendSideLastValue !== null && panel.legend.rightSide !== legendSideLastValue) {
+            return true;
+          }
+          return false;
         }
 
         function addTimeAxis(options) {
@@ -172,7 +237,7 @@ function (angular, $, kbn, moment, _) {
           var max = _.isUndefined(scope.range.to) ? null : scope.range.to.getTime();
 
           options.xaxis = {
-            timezone: dashboard.current.timezone,
+            timezone: dashboard.timezone,
             show: scope.panel['x-axis'],
             mode: "time",
             min: min,
@@ -258,8 +323,8 @@ function (angular, $, kbn, moment, _) {
           var defaults = {
             position: 'left',
             show: scope.panel['y-axis'],
-            min: scope.panel.grid.min,
-            max: scope.panel.percentage && scope.panel.stack ? 100 : scope.panel.grid.max,
+            min: scope.panel.grid.leftMin,
+            max: scope.panel.percentage && scope.panel.stack ? 100 : scope.panel.grid.leftMax,
           };
 
           options.yaxes.push(defaults);
@@ -267,6 +332,8 @@ function (angular, $, kbn, moment, _) {
           if (_.findWhere(data, {yaxis: 2})) {
             var secondY = _.clone(defaults);
             secondY.position = 'right';
+            secondY.min = scope.panel.grid.rightMin;
+            secondY.max = scope.panel.percentage && scope.panel.stack ? 100 : scope.panel.grid.rightMax;
             options.yaxes.push(secondY);
             configureAxisMode(options.yaxes[1], scope.panel.y_formats[1]);
           }
@@ -275,9 +342,9 @@ function (angular, $, kbn, moment, _) {
         }
 
         function configureAxisMode(axis, format) {
-          if (format !== 'none') {
-            axis.tickFormatter = kbn.getFormatFunction(format, 1);
-          }
+          axis.tickFormatter = function(val, axis) {
+            return kbn.valueFormats[format](val, axis.tickDecimals, axis.scaledDecimals);
+          };
         }
 
         function time_format(interval, ticks, min, max) {
@@ -302,57 +369,19 @@ function (angular, $, kbn, moment, _) {
           return "%H:%M";
         }
 
-        var $tooltip = $('<div>');
-
-        elem.bind("plothover", function (event, pos, item) {
-          var group, value, timestamp, seriesInfo, format;
-
-          if (item) {
-            seriesInfo = item.series.info;
-            format = scope.panel.y_formats[seriesInfo.yaxis - 1];
-
-            if (seriesInfo.alias) {
-              group = '<small style="font-size:0.9em;">' +
-                '<i class="icon-circle" style="color:'+item.series.color+';"></i>' + ' ' +
-                (decodeURIComponent(seriesInfo.alias)) +
-              '</small><br>';
-            } else {
-              group = kbn.query_color_dot(item.series.color, 15) + ' ';
-            }
-
-            if (scope.panel.stack && scope.panel.tooltip.value_type === 'individual') {
-              value = item.datapoint[1] - item.datapoint[2];
-            }
-            else {
-              value = item.datapoint[1];
-            }
-
-            value = kbn.getFormatFunction(format, 2)(value);
-
-            timestamp = dashboard.current.timezone === 'browser' ?
-              moment(item.datapoint[0]).format('YYYY-MM-DD HH:mm:ss') :
-              moment.utc(item.datapoint[0]).format('YYYY-MM-DD HH:mm:ss');
-            $tooltip
-              .html(
-                group + value + " @ " + timestamp
-              )
-              .place_tt(pos.pageX, pos.pageY);
-          } else {
-            $tooltip.detach();
-          }
-        });
-
         function render_panel_as_graphite_png(url) {
           url += '&width=' + elem.width();
           url += '&height=' + elem.css('height').replace('px', '');
-          url += '&bgcolor=1f1f1f'; // @grayDarker & @kibanaPanelBackground
+          url += '&bgcolor=1f1f1f'; // @grayDarker & @grafanaPanelBackground
           url += '&fgcolor=BBBFC2'; // @textColor & @grayLighter
           url += scope.panel.stack ? '&areaMode=stacked' : '';
           url += scope.panel.fill !== 0 ? ('&areaAlpha=' + (scope.panel.fill/10).toFixed(1)) : '';
           url += scope.panel.linewidth !== 0 ? '&lineWidth=' + scope.panel.linewidth : '';
           url += scope.panel.legend.show ? '&hideLegend=false' : '&hideLegend=true';
-          url += scope.panel.grid.min !== null ? '&yMin=' + scope.panel.grid.min : '';
-          url += scope.panel.grid.max !== null ? '&yMax=' + scope.panel.grid.max : '';
+          url += scope.panel.grid.leftMin !== null ? '&yMin=' + scope.panel.grid.leftMin : '';
+          url += scope.panel.grid.leftMax !== null ? '&yMax=' + scope.panel.grid.leftMax : '';
+          url += scope.panel.grid.rightMin !== null ? '&yMin=' + scope.panel.grid.rightMin : '';
+          url += scope.panel.grid.rightMax !== null ? '&yMax=' + scope.panel.grid.rightMax : '';
           url += scope.panel['x-axis'] ? '' : '&hideAxes=true';
           url += scope.panel['y-axis'] ? '' : '&hideYAxis=true';
 
@@ -362,6 +391,9 @@ function (angular, $, kbn, moment, _) {
             break;
           case 'bits':
             url += '&yUnitSystem=binary';
+            break;
+          case 'bps':
+            url += '&yUnitSystem=si';
             break;
           case 'short':
             url += '&yUnitSystem=si';
@@ -387,9 +419,13 @@ function (angular, $, kbn, moment, _) {
           elem.html('<img src="' + url + '"></img>');
         }
 
+        new GraphTooltip(elem, dashboard, scope, function() {
+          return data;
+        });
+
         elem.bind("plotselected", function (event, ranges) {
           scope.$apply(function() {
-            scope.filter.setTime({
+            timeSrv.setTime({
               from  : moment.utc(ranges.xaxis.from).toDate(),
               to    : moment.utc(ranges.xaxis.to).toDate(),
             });

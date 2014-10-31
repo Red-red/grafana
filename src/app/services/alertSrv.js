@@ -1,14 +1,26 @@
 define([
   'angular',
-  'underscore'
+  'lodash'
 ],
 function (angular, _) {
   'use strict';
 
-  var module = angular.module('kibana.services');
+  var module = angular.module('grafana.services');
 
-  module.service('alertSrv', function($timeout) {
+  module.service('alertSrv', function($timeout, $sce, $rootScope) {
     var self = this;
+
+    this.init = function() {
+      $rootScope.onAppEvent('alert-error', function(e, alert) {
+        self.set(alert[0], alert[1], 'error');
+      });
+      $rootScope.onAppEvent('alert-warning', function(e, alert) {
+        self.set(alert[0], alert[1], 'warning', 5000);
+      });
+      $rootScope.onAppEvent('alert-success', function(e, alert) {
+        self.set(alert[0], alert[1], 'success', 3000);
+      });
+    };
 
     // List of all alert objects
     this.list = [];
@@ -17,7 +29,7 @@ function (angular, _) {
       var
         _a = {
           title: title || '',
-          text: text || '',
+          text: $sce.trustAsHtml(text || ''),
           severity: severity || 'info',
         },
         _ca = angular.toJson(_a),

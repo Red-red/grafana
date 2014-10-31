@@ -1,12 +1,13 @@
 define([
-  'angular'
+  'angular',
+  'kbn'
 ],
-function (angular) {
+function (angular, kbn) {
   'use strict';
 
-  var module = angular.module('kibana.directives');
+  var module = angular.module('grafana.directives');
 
-  module.directive('dashUpload', function(timer, dashboard, alertSrv) {
+  module.directive('dashUpload', function(timer, alertSrv, $location) {
     return {
       restrict: 'A',
       link: function(scope) {
@@ -14,8 +15,17 @@ function (angular) {
           var files = evt.target.files; // FileList object
           var readerOnload = function() {
             return function(e) {
-              dashboard.dash_load(JSON.parse(e.target.result));
-              scope.$apply();
+              scope.$apply(function() {
+                try {
+                  window.grafanaImportDashboard = JSON.parse(e.target.result);
+                } catch (err) {
+                  console.log(err);
+                  scope.appEvent('alert-error', ['Import failed', 'JSON -> JS Serialization failed: ' + err.message]);
+                  return;
+                }
+                var title = kbn.slugifyForUrl(window.grafanaImportDashboard.title);
+                $location.path('/dashboard/import/' + title);
+              });
             };
           };
           for (var i = 0, f; f = files[i]; i++) {

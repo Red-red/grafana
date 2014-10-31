@@ -4,7 +4,7 @@ define([
 function (angular) {
   'use strict';
 
-  var module = angular.module('kibana.services');
+  var module = angular.module('grafana.services');
 
   // This service was based on OpenJS library available in BSD License
   // http://www.openjs.com/scripts/events/keyboard_shortcuts/index.php
@@ -61,6 +61,7 @@ function (angular) {
         else if (e.which) {
           code = e.which;
         }
+
         var character = String.fromCharCode(code).toLowerCase();
 
         if (code === 188) {
@@ -93,6 +94,9 @@ function (angular) {
           ",": "<",
           ".": ">",
           "/": "?",
+          "»": "?",
+          "«": "?",
+          "¿": "?",
           "\\": "|"
         };
         // Special Keys - and their codes

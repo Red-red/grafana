@@ -435,7 +435,8 @@ angular.module('$strap.directives').factory('$modal', [
           return res.data;
         })).then(function onSuccess(template) {
           var id = templateUrl.replace('.html', '').replace(/[\/|\.|:]/g, '-') + '-' + scope.$id;
-          var $modal = $('<div class="modal hide" tabindex="-1"></div>').attr('id', id).addClass('fade').html(template);
+          // grafana change, removed fade
+          var $modal = $('<div class="modal hide" tabindex="-1"></div>').attr('id', id).html(template);
           if (options.modalClass)
             $modal.addClass(options.modalClass);
           $('body').append($modal);
@@ -783,7 +784,8 @@ angular.module('$strap.directives').directive('bsTooltip', [
             value = newValue;
           }
         });
-        if (!!attrs.unique) {
+        // Grafana change, always hide other tooltips
+        if (true) {
           element.on('show', function (ev) {
             $('.tooltip.in').each(function () {
               var $this = $(this), tooltip = $this.data('tooltip');
@@ -797,7 +799,8 @@ angular.module('$strap.directives').directive('bsTooltip', [
           title: function () {
             return angular.isFunction(value) ? value.apply(null, arguments) : value;
           },
-          html: true
+          html: true,
+          container: 'body', // Grafana change
         });
         var tooltip = element.data('tooltip');
         tooltip.show = function () {

@@ -1,10 +1,10 @@
 define([
-  './addPanel',
   './arrayJoin',
   './dashUpload',
-  './kibanaPanel',
-  './kibanaSimplePanel',
+  './grafanaPanel',
+  './grafanaSimplePanel',
   './ngBlur',
+  './dashEditLink',
   './ngModelOnBlur',
   './tip',
   './confirmClick',
@@ -15,6 +15,9 @@ define([
   './bodyClass',
   './addGraphiteFunc',
   './graphiteFuncEditor',
+  './templateParamSelector',
+  './graphiteSegment',
   './grafanaVersionCheck',
+  './dropdown.typeahead',
   './influxdbFuncEditor'
 ], function () {});

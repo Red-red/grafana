@@ -1,28 +1,18 @@
-/** @scratch /panels/5
- * include::panels/text.asciidoc[]
- */
-
-/** @scratch /panels/text/0
- * == text
- * Status: *Stable*
- *
- * The text panel is used for displaying static text formated as markdown, sanitized html or as plain
- * text.
- *
- */
 define([
   'angular',
   'app',
-  'underscore',
-  'require'
+  'lodash',
+  'require',
 ],
 function (angular, app, _, require) {
   'use strict';
 
-  var module = angular.module('kibana.panels.text', []);
+  var module = angular.module('grafana.panels.text', []);
   app.useModule(module);
 
-  module.controller('text', function($scope) {
+  var converter;
+
+  module.controller('text', function($scope, templateSrv, $sce, panelSrv) {
 
     $scope.panelMeta = {
       description : "A static text panel that can use plain text, markdown, or (sanitized) HTML"
@@ -30,72 +20,76 @@ function (angular, app, _, require) {
 
     // Set and populate defaults
     var _d = {
+      title: 'default title',
       mode    : "markdown", // 'html', 'markdown', 'text'
       content : "",
       style: {},
     };
 
-    _.defaults($scope.panel,_d);
+    _.defaults($scope.panel, _d);
 
     $scope.init = function() {
-      $scope.initBaseController(this, $scope);
-
+      panelSrv.init(this);
       $scope.ready = false;
+      $scope.$on('refresh', $scope.render);
+      $scope.render();
     };
 
     $scope.render = function() {
-      $scope.$emit('render');
-    };
-
-    $scope.openEditor = function() {
-      //$scope.$emit('open-modal','paneleditor');
-      console.log('scope id', $scope.$id);
-    };
-
-  });
-
-  module.directive('markdown', function() {
-    return {
-      restrict: 'E',
-      link: function(scope, element) {
-        scope.$on('render', function() {
-          render_panel();
-        });
-
-        function render_panel() {
-          require(['./lib/showdown'], function (Showdown) {
-            scope.ready = true;
-            var converter = new Showdown.converter();
-            var text = scope.panel.content.replace(/&/g, '&amp;')
-              .replace(/>/g, '&gt;')
-              .replace(/</g, '&lt;');
-            var htmlText = converter.makeHtml(text);
-            element.html(htmlText);
-            // For whatever reason, this fixes chrome. I don't like it, I think
-            // it makes things slow?
-            if(!scope.$$phase) {
-              scope.$apply();
-            }
-          });
-        }
-
-        render_panel();
+      if ($scope.panel.mode === 'markdown') {
+        $scope.renderMarkdown($scope.panel.content);
+      }
+      else if ($scope.panel.mode === 'html') {
+        $scope.updateContent($scope.panel.content);
+      }
+      else if ($scope.panel.mode === 'text') {
+        $scope.renderText($scope.panel.content);
       }
     };
-  });
 
-  module.filter('newlines', function() {
-    return function (input) {
-      return input.replace(/\n/g, '<br/>');
+    $scope.renderText = function(content) {
+      content = content
+        .replace(/&/g, '&amp;')
+        .replace(/>/g, '&gt;')
+        .replace(/</g, '&lt;')
+        .replace(/\n/g, '<br/>');
+
+      $scope.updateContent(content);
     };
-  });
 
-  module.filter('striphtml', function () {
-    return function(text) {
-      return text
+    $scope.renderMarkdown = function(content) {
+      var text = content
         .replace(/&/g, '&amp;')
         .replace(/>/g, '&gt;')
         .replace(/</g, '&lt;');
+
+      if (converter) {
+        $scope.updateContent(converter.makeHtml(text));
+      }
+      else {
+        require(['./lib/showdown'], function (Showdown) {
+          converter = new Showdown.converter();
+          $scope.updateContent(converter.makeHtml(text));
+        });
+      }
     };
+
+    $scope.updateContent = function(html) {
+      try {
+        $scope.content = $sce.trustAsHtml(templateSrv.replace(html));
+      } catch(e) {
+        console.log('Text panel error: ', e);
+        $scope.content = $sce.trustAsHtml(html);
+      }
+
+      if(!$scope.$$phase) {
+        $scope.$digest();
+      }
+    };
+
+    $scope.openEditor = function() {
+    };
+
+    $scope.init();
   });
 });

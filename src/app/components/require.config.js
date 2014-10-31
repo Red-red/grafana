@@ -3,32 +3,33 @@
  */
 require.config({
   baseUrl: 'app',
+  urlArgs: 'bust=' + (new Date().getTime()),
 
   paths: {
     config:                   ['../config', '../config.sample'],
     settings:                 'components/settings',
     kbn:                      'components/kbn',
+    store:                    'components/store',
 
     css:                      '../vendor/require/css',
     text:                     '../vendor/require/text',
     moment:                   '../vendor/moment',
     filesaver:                '../vendor/filesaver',
     angular:                  '../vendor/angular/angular',
+    'angular-route':          '../vendor/angular/angular-route',
     'angular-dragdrop':       '../vendor/angular/angular-dragdrop',
     'angular-strap':          '../vendor/angular/angular-strap',
-    'angular-sanitize':       '../vendor/angular/angular-sanitize',
     timepicker:               '../vendor/angular/timepicker',
     datepicker:               '../vendor/angular/datepicker',
     bindonce:                 '../vendor/angular/bindonce',
     crypto:                   '../vendor/crypto.min',
     spectrum:                 '../vendor/spectrum',
 
-    underscore:               'components/underscore.extended',
-    'underscore-src':         '../vendor/underscore',
+    lodash:                   'components/lodash.extended',
+    'lodash-src':             '../vendor/lodash',
     bootstrap:                '../vendor/bootstrap/bootstrap',
 
-    jquery:                   '../vendor/jquery/jquery-1.8.0',
-    'jquery-ui':              '../vendor/jquery/jquery-ui-1.10.3',
+    jquery:                   '../vendor/jquery/jquery-2.1.1.min',
 
     'extend-jquery':          'components/extend-jquery',
 
@@ -39,18 +40,15 @@ require.config({
     'jquery.flot.stack':      '../vendor/jquery/jquery.flot.stack',
     'jquery.flot.stackpercent':'../vendor/jquery/jquery.flot.stackpercent',
     'jquery.flot.time':       '../vendor/jquery/jquery.flot.time',
-    'jquery.flot.byte':       '../vendor/jquery/jquery.flot.byte',
+    'jquery.flot.crosshair':  '../vendor/jquery/jquery.flot.crosshair',
+    'jquery.flot.fillbelow':  '../vendor/jquery/jquery.flot.fillbelow',
 
     modernizr:                '../vendor/modernizr-2.6.1',
-    elasticjs:                '../vendor/elasticjs/elastic-angular-client',
 
     'bootstrap-tagsinput':    '../vendor/tagsinput/bootstrap-tagsinput',
 
   },
   shim: {
-    underscore: {
-      exports: '_'
-    },
 
     spectrum: {
       deps: ['jquery']
@@ -79,19 +77,17 @@ require.config({
 
     // simple dependency declaration
     //
-    'jquery-ui':            ['jquery'],
     'jquery.flot':          ['jquery'],
-    'jquery.flot.byte':     ['jquery', 'jquery.flot'],
     'jquery.flot.pie':      ['jquery', 'jquery.flot'],
     'jquery.flot.events':   ['jquery', 'jquery.flot'],
     'jquery.flot.selection':['jquery', 'jquery.flot'],
     'jquery.flot.stack':    ['jquery', 'jquery.flot'],
     'jquery.flot.stackpercent':['jquery', 'jquery.flot'],
     'jquery.flot.time':     ['jquery', 'jquery.flot'],
-
-    'angular-sanitize':     ['angular'],
+    'jquery.flot.crosshair':['jquery', 'jquery.flot'],
+    'jquery.flot.fillbelow':['jquery', 'jquery.flot'],
     'angular-cookies':      ['angular'],
-    'angular-dragdrop':     ['jquery','jquery-ui','angular'],
+    'angular-dragdrop':     ['jquery', 'angular'],
     'angular-loader':       ['angular'],
     'angular-mocks':        ['angular'],
     'angular-resource':     ['angular'],
@@ -102,8 +98,6 @@ require.config({
 
     timepicker:             ['jquery', 'bootstrap'],
     datepicker:             ['jquery', 'bootstrap'],
-
-    elasticjs:              ['angular', '../vendor/elasticjs/elastic'],
 
     'bootstrap-tagsinput':          ['jquery'],
   },

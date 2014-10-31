@@ -9,9 +9,10 @@ module.exports = function(config) {
         'app/services/**/*.js',
         'app/filters/**/*.js',
         'app/panels/**/*.js',
+        'app/routes/**/*.js',
+        'plugins/**/*.js',
         'app/app.js',
         'vendor/angular/**/*.js',
-        'vendor/elasticjs/elastic-angular-client.js'
       ],
       dest: '<%= tempDir %>'
     }
