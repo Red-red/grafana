@@ -12,15 +12,26 @@ define([
         'jquery',
         'kbn',
         'require',
-        'underscore'
+        'underscore',
+        'directives/grafanaGraph.tooltip',
+        'services/panelSrv',
+        'jquery.flot',
+        'jquery.flot.events',
+        'jquery.flot.selection',
+        'jquery.flot.time',
+        'jquery.flot.stack',
+        'jquery.flot.stackpercent',
+        'jquery.flot.fillbelow',
+        'jquery.flot.crosshair',
+        'jquery.flot.pie'
     ],
-    function (angular, app, $, kbn, require, _) {
+    function (angular, app, $, kbn, require, _, GraphTooltip) {
         'use strict';
 
         var module = angular.module('kibana.panels.piechart', []);
         app.useModule(module);
 
-        module.controller('piechart', function ($scope) {
+        module.controller('PieChart', function ($scope, panelSrv) {
 
             $scope.panelMeta = {
                 description: "A Pie chart module panel to display PIE Charts"
@@ -30,15 +41,26 @@ define([
             var _d = {
                 url: "", // 'API URL'
                 dataField: "data",
-                labelField: "label"
+                labelField: "label",
+                tooltip       : {
+                    value_type: 'cumulative',
+                    shared: false,
+                    formatter: function(val) {
+                        if (val && _.isArray(val)) {
+                            return kbn.valueFormats.short(val[0][1]);
+                        }
+
+                        return val;
+                    }
+                }
             };
 
             _.defaults($scope.panel, _d);
 
-            $scope.init = function () {
-                $scope.initBaseController(this, $scope);
-
+            $scope.init = function() {
                 $scope.ready = false;
+
+                panelSrv.init($scope);
             };
 
             $scope.render = function () {
@@ -50,6 +72,7 @@ define([
                 console.log('scope id', $scope.$id);
             };
 
+            $scope.init();
         });
 
         module.directive('pieGraph', function ($rootScope) {
@@ -96,7 +119,7 @@ define([
                             return;
                         }
 
-                        var formatter = kbn.getFormatFunction('short', 1);
+                        var formatter = kbn.valueFormats.short;
 
                         var options = {
                             series: {
@@ -117,11 +140,14 @@ define([
                             },
                             legend: {
                                 show: false
+                            },
+                            grid: {
+                                hoverable: true
                             }
                         };
 
                         $.ajax(scope.panel.url, {dataType: 'JSON', cache: false}).done(function(rawData) {
-
+                            var dashboard = scope.dashboard;
                             var data = [];
 
                             if ($.isArray(rawData)) {
@@ -135,7 +161,11 @@ define([
 
                                 element.html('');
 
-                                $.plot(element, data, options);
+                                var plot = $.plot(element, data, options);
+
+                                new GraphTooltip(element, dashboard, scope, function() {
+                                    return plot.getData();
+                                });
 
                                 scope.$apply(function() {
                                     scope.panel.total = formatter(sumOfData);

@@ -152,7 +152,7 @@ function (angular, app, $, _, kbn, moment, TimeSeries) {
        */
       percentage    : false,
 
-      nullPointMode : 'connected',
+      nullPointMode : 'null as zero',
 
       steppedLine: false,
 
