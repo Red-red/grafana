@@ -7,13 +7,14 @@
  *
  */
 define([
-    'angular',
-    'app',
-    'underscore',
-    'kbn',
-    'require'
-],
-    function (angular, app, _, kbn) {
+        'angular',
+        'app',
+        'jquery',
+        'kbn',
+        'require',
+        'underscore'
+    ],
+    function (angular, app, $, kbn, require, _) {
         'use strict';
 
         var module = angular.module('kibana.panels.piechart', []);
@@ -51,7 +52,7 @@ define([
 
         });
 
-        module.directive('pieGraph', function ($rootScope, dashboard) {
+        module.directive('pieGraph', function ($rootScope) {
             return {
                 restrict: 'A',
                 template: '<div> </div>',
@@ -106,7 +107,10 @@ define([
                                         show: true,
                                         threshold: 0.1,
                                         formatter: function (label, series) {
-                                            return '<div style="font-size:8pt;text-align:center;padding:2px;color:white;">' + label + '&nbsp;' +Math.round(series.percent)+"%<br/>" + formatter(series.data[0][1]) +'</div>';
+                                            var line = '<div style="font-size:8pt;text-align:center;padding:2px;color:white;">';
+                                            line = line + label + '&nbsp;' + Math.round(series.percent);
+                                            line = line + '%<br/>' + formatter(series.data[0][1]) + '</div>';
+                                            return line;
                                         }
                                     }
                                 }

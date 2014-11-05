@@ -47,6 +47,8 @@ require.config({
 
     'bootstrap-tagsinput':    '../vendor/tagsinput/bootstrap-tagsinput',
 
+    'underscore':             '../vendor/underscore/underscore-min'
+
   },
   shim: {
 
