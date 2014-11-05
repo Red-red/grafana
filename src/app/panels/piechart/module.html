@@ -1,14 +1,17 @@
-<div ng-controller='piechart' ng-init="init()" style="min-height:{{panel.height || row.height}}" ng-dblclick="openEditor()">
-  	<div style="position: relative">
-		<div pie-graph class="pointer histogram-chart">
+<div ng-controller='piechart'>
 
-		</div>
-	</div>
+    <div class="graph-wrapper" ng-class="{'graph-legend-rightside': panel.legend.rightSide}">
+        <div class="graph-canvas-wrapper">
 
-	<div ng-if="panel.total" class="grafana-legend-container">
-		<span class="small histogram-legend-item">
-			<a data-unique="1" data-placement="bottomLeft" class="ng-binding">Total: </a>
-			<span class="ng-scope"><span data-ng-bind="panel.total" class="ng-binding"></span></span>
-		</span>
-	</div>
+            <div pie-graph class="pointer histogram-chart"></div>
+
+        </div>
+    </div>
+
+    <div ng-if="panel.total" class="grafana-legend-container">
+        <span class="small histogram-legend-item">
+            <a data-unique="1" data-placement="bottomLeft" class="ng-binding">Total: </a>
+            <span class="ng-scope"><span data-ng-bind="panel.total" class="ng-binding"></span></span>
+        </span>
+    </div>
 </div>

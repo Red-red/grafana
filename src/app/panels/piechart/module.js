@@ -55,7 +55,7 @@ define([
         module.directive('pieGraph', function ($rootScope) {
             return {
                 restrict: 'A',
-                template: '<div> </div>',
+                template: '<div></div>',
                 link: function (scope, element) {
                     scope.$on('render', function () {
                         render_panel();
