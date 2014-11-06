@@ -32,7 +32,10 @@ define([
             };
 
             this.showTooltip = function (title, innerHtml, pos) {
-                var body = '<div class="graph-tooltip small"><div class="graph-tooltip-time">' + title + '</div> ';
+                var body = '<div class="graph-tooltip small">';
+                if (title) {
+                    body += '<div class="graph-tooltip-time">' + title + '</div> ';
+                }
                 body += innerHtml + '</div>';
                 $tooltip.html(body).place_tt(pos.pageX + 20, pos.pageY);
             };
@@ -114,7 +117,7 @@ define([
                 var plot = elem.data().plot;
                 var plotData = plot.getData();
                 var seriesList = getSeriesFn();
-                var group, value, timestamp, hoverInfo, i, series, seriesHtml;
+                var group, value, value_percent, timestamp, hoverInfo, i, series, seriesHtml;
 
                 if (dashboard.sharedCrosshair) {
                     scope.appEvent('setCrosshair', {pos: pos, scope: scope});
@@ -160,12 +163,14 @@ define([
 
                     if (scope.panel.stack && scope.panel.tooltip.value_type === 'individual') {
                         value = item.datapoint[1] - item.datapoint[2];
+                        value_percent = item.datapoint[0];
                     }
                     else {
                         value = item.datapoint[1];
+                        value_percent = item.datapoint[0];
                     }
                     if (scope.panel.tooltip.formatter) {
-                        value = scope.panel.tooltip.formatter(value);
+                        value = scope.panel.tooltip.formatter(value, value_percent);
                     } else {
                         value = series.formatValue ? series.formatValue(value) : value;
                     }

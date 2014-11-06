@@ -42,20 +42,29 @@ define([
                 url: "", // 'API URL'
                 dataField: "data",
                 labelField: "label",
-                tooltip       : {
+                tooltip: {
                     value_type: 'cumulative',
                     shared: false,
-                    formatter: function(val) {
+                    formatter: function (val, val_percent) {
+                        var text = '';
+
                         if (val && _.isArray(val)) {
-                            return kbn.valueFormats.short(val[0][1]);
+                            text = val[0][1];
+                        } else {
+                            text = val;
                         }
 
-                        return val;
+                        if (val_percent) {
+                            text += ' <sup style="font-style:normal;">(' + val_percent.toFixed(2) + '%)</sup>';
+                        }
+
+                        return text;
                     }
                 }
             };
 
             _.defaults($scope.panel, _d);
+            _.defaults($scope.panel.tooltip, _d.tooltip);
 
             $scope.init = function() {
                 $scope.ready = false;
