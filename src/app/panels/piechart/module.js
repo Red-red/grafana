@@ -13,7 +13,7 @@ define([
         'kbn',
         'require',
         'underscore',
-        'directives/grafanaGraph.tooltip',
+        'panels/graph/graph.tooltip',
         'services/panelSrv',
         'jquery.flot',
         'jquery.flot.events',
