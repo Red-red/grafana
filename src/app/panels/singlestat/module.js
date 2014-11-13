@@ -4,10 +4,11 @@ define([
   'lodash',
   'components/timeSeries',
   'kbn',
+  'components/panelmeta',
   'services/panelSrv',
   './singleStatPanel',
 ],
-function (angular, app, _, TimeSeries, kbn) {
+function (angular, app, _, TimeSeries, kbn, PanelMeta) {
   'use strict';
 
   var module = angular.module('grafana.panels.singlestat');
@@ -15,28 +16,19 @@ function (angular, app, _, TimeSeries, kbn) {
 
   module.controller('SingleStatCtrl', function($scope, panelSrv, timeSrv) {
 
-    $scope.panelMeta = {
+    $scope.panelMeta = new PanelMeta({
+      description: 'Singlestat panel',
       titlePos: 'left',
-      description : "A stats values panel",
-      fullEditorTabs : [
-        {
-          title: 'General',
-          src:'app/partials/panelgeneral.html'
-        },
-        {
-          title: 'Metrics',
-          src:'app/partials/metrics.html'
-        },
-        {
-          title: 'Options',
-          src:'app/panels/singlestat/editor.html'
-        }
-      ],
-      fullscreenEdit: true,
-    };
+      fullscreen: true,
+      metricsEditor: true
+    });
+
+    $scope.panelMeta.addEditorTab('Options', 'app/panels/singlestat/editor.html');
 
     // Set and populate defaults
     var _d = {
+      maxDataPoints: 100,
+      interval: null,
       targets: [{}],
       cacheTimeout: null,
       format: 'none',
@@ -68,6 +60,8 @@ function (angular, app, _, TimeSeries, kbn) {
     $scope.updateTimeRange = function () {
       $scope.range = timeSrv.timeRange();
       $scope.rangeUnparsed = timeSrv.timeRange(false);
+      $scope.resolution = $scope.panel.maxDataPoints;
+      $scope.interval = kbn.calculateInterval($scope.range, $scope.resolution, $scope.panel.interval);
     };
 
     $scope.get_data = function() {
@@ -75,9 +69,9 @@ function (angular, app, _, TimeSeries, kbn) {
 
       var metricsQuery = {
         range: $scope.rangeUnparsed,
-        interval: '1min',
+        interval: $scope.interval,
         targets: $scope.panel.targets,
-        maxDataPoints: 100,
+        maxDataPoints: $scope.resolution,
         cacheTimeout: $scope.panel.cacheTimeout
       };
 
@@ -130,6 +124,9 @@ function (angular, app, _, TimeSeries, kbn) {
 
     $scope.getDecimalsForValue = function(value) {
       var opts = {};
+      if (value === 0) {
+        return { decimals: 0, scaledDecimals: 0 };
+      }
 
       var delta = value / 2;
       var dec = -Math.floor(Math.log(delta) / Math.LN10);
@@ -161,7 +158,8 @@ function (angular, app, _, TimeSeries, kbn) {
 
       var result = {};
       result.decimals = Math.max(0, dec);
-      result.scaledDecimals = result.decimals - Math.floor(Math.log(size) / Math.LN10);
+      result.scaledDecimals = result.decimals - Math.floor(Math.log(size) / Math.LN11) + 2;
+
       return result;
     };
 
