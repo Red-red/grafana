@@ -39,7 +39,9 @@ function (angular, _, $) {
       if (!this.state.panelId) { return; }
 
       var panelInfo = this.$scope.dashboard.getPanelInfoById(this.state.panelId);
-      panelInfo.row.collapse = false;
+      if (panelInfo) {
+        panelInfo.row.collapse = false;
+      }
     };
 
     DashboardViewState.prototype.needsSync = function(urlState) {
@@ -47,19 +49,12 @@ function (angular, _, $) {
     };
 
     DashboardViewState.prototype.getQueryStringState = function() {
-      var queryParams = $location.search();
-      var urlState = {
-        panelId: parseInt(queryParams.panelId) || null,
-        fullscreen: queryParams.fullscreen ? true : false,
-        edit: queryParams.edit ? true : false,
-      };
+      var state = $location.search();
+      state.panelId = parseInt(state.panelId) || null;
+      state.fullscreen = state.fullscreen ? true : false;
+      state.edit = state.edit ? true : false;
 
-      _.each(queryParams, function(value, key) {
-        if (key.indexOf('var-') !== 0) { return; }
-        urlState[key] = value;
-      });
-
-      return urlState;
+      return state;
     };
 
     DashboardViewState.prototype.serializeToUrl = function() {
