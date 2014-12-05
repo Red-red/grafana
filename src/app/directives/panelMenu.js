@@ -68,10 +68,11 @@ function (angular, $, _) {
           elem.append($link);
 
           $scope.$watchCollection('panel.links', function(newValue) {
-            $link.toggleClass('has-panel-links', newValue ? newValue.length > 0 : false);
+            var showIcon = (newValue ? newValue.length > 0 : false) && $scope.panel.title !== '';
+            $link.toggleClass('has-panel-links', showIcon);
           });
 
-          function dismiss(time) {
+          function dismiss(time, force) {
             clearTimeout(timeout);
             timeout = null;
 
@@ -81,9 +82,11 @@ function (angular, $, _) {
             }
 
             // if hovering or draging pospone close
-            if ($menu.is(':hover') || $scope.dashboard.$$panelDragging) {
-              dismiss(2500);
-              return;
+            if (force !== true) {
+              if ($menu.is(':hover') || $scope.dashboard.$$panelDragging) {
+                dismiss(2200);
+                return;
+              }
             }
 
             if (menuScope) {
@@ -96,7 +99,12 @@ function (angular, $, _) {
             }
           }
 
-          var showMenu = function() {
+          var showMenu = function(e) {
+            // if menu item is clicked and menu was just removed from dom ignore this event
+            if (!$.contains(document, e.target)) {
+              return;
+            }
+
             if ($menu) {
               dismiss();
               return;
@@ -123,6 +131,9 @@ function (angular, $, _) {
 
             menuScope = $scope.$new();
             menuScope.extendedMenu = getExtendedMenu($scope);
+            menuScope.dismiss = function() {
+              dismiss(null, true);
+            };
 
             $('.panel-menu').remove();
             elem.append($menu);
@@ -133,13 +144,8 @@ function (angular, $, _) {
             $(".panel-container").removeClass('panel-highlight');
             $panelContainer.toggleClass('panel-highlight');
 
-            dismiss(2500);
+            dismiss(2200);
           };
-
-          if ($scope.panelMeta.titlePos && $scope.panel.title) {
-            elem.css('text-align', 'left');
-            $link.css('padding-left', '10px');
-          }
 
           elem.click(showMenu);
           $compile(elem.contents())($scope);
